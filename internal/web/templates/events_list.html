@@ -1,0 +1,43 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Events - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Events</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Reason</th>
+                    <th>Object</th>
+                    <th>Message</th>
+                    <th>Age</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Events}}
+                <tr>
+                    <td>
+                        <span class="status-badge {{if eq .Type "Normal"}}status-neutral{{else}}status-warning{{end}}">
+                            {{.Type}}
+                        </span>
+                    </td>
+                    <td>{{.Reason}}</td>
+                    <td>{{.Object}}</td>
+                    <td style="max-width: 400px;">{{.Message}}</td>
+                    <td>{{.Age}}</td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No events found in namespace {{.Namespace}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}

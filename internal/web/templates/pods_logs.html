@@ -1,0 +1,28 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Logs: {{.Name}} - k8s-ui{{end}}
+
+{{define "content"}}
+<div style="margin-bottom: 1rem;">
+    <a href="/pods/{{.Name}}">← Back to Pod</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Logs: {{.Name}} {{if .Container}}({{.Container}}){{end}}</h2>
+        <div class="actions">
+            <form method="GET" style="display: flex; gap: 0.5rem; align-items: center;">
+                {{if .Container}}<input type="hidden" name="container" value="{{.Container}}">{{end}}
+                <input type="number" name="tailLines" value="{{.TailLines}}" style="width: 80px;" title="Tail Lines">
+                <label style="display: flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;">
+                    <input type="checkbox" name="follow" value="1" {{if .Follow}}checked{{end}}> Follow
+                </label>
+                <button type="submit" class="btn btn-primary btn-sm">Refresh</button>
+            </form>
+        </div>
+    </div>
+    <div style="padding: 0;">
+        <pre style="border-radius: 0; max-height: 80vh; overflow-y: auto;">{{.Logs}}</pre>
+    </div>
+</div>
+{{end}}

@@ -1,0 +1,45 @@
+{{template "layout.html" .}}
+
+{{define "title"}}ConfigMaps - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">ConfigMaps</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Keys</th>
+                    <th>Age</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .ConfigMaps}}
+                <tr>
+                    <td style="font-weight: 500;">{{.Name}}</td>
+                    <td style="font-family: monospace; font-size: 0.85em;">
+                        {{range .Keys}}
+                        <span style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; margin-right: 4px;">{{.}}</span>
+                        {{end}}
+                    </td>
+                    <td>{{.Age}}</td>
+                    <td>
+                        <div class="actions">
+                            <a href="/configmaps/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No configmaps found in namespace {{.Namespace}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}

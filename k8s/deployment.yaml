@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-ui
+  namespace: default
+  labels:
+    app: k8s-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-ui
+  template:
+    metadata:
+      labels:
+        app: k8s-ui
+    spec:
+      serviceAccountName: k8s-ui
+      containers:
+        - name: k8s-ui
+          image: k8s-ui:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-ui
+  namespace: default
+spec:
+  selector:
+    app: k8s-ui
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP

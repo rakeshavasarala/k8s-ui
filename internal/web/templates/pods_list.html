@@ -1,0 +1,55 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Pods - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Pods</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Ready</th>
+                    <th>Status</th>
+                    <th>Restarts</th>
+                    <th>Age</th>
+                    <th>Node</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Pods}}
+                <tr>
+                    <td><a href="/pods/{{.Name}}" style="font-weight: 500;">{{.Name}}</a></td>
+                    <td>{{.Ready}}</td>
+                    <td>
+                        <span class="status-badge {{if eq .Status "Running"}}status-success{{else if eq .Status "Pending"}}status-warning{{else}}status-error{{end}}">
+                            {{.Status}}
+                        </span>
+                    </td>
+                    <td>{{.Restarts}}</td>
+                    <td>{{.Age}}</td>
+                    <td>{{.Node}}</td>
+                    <td>
+                        <div class="actions">
+                            <a href="/pods/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                            <a href="/pods/{{.Name}}/logs" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">Logs</a>
+                            <form action="/pods/{{.Name}}/restart" method="POST" style="display:inline;" onsubmit="return confirm('Restart pod {{.Name}}?');">
+                                <button type="submit" class="btn btn-sm btn-danger">Restart</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No pods found in namespace {{.Namespace}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}

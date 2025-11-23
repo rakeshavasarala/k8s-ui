@@ -1,0 +1,103 @@
+{{template "layout.html" .}}
+
+{{define "title"}}{{.Name}} - k8s-ui{{end}}
+
+{{define "content"}}
+<div style="margin-bottom: 1rem;">
+    <a href="/pods">← Back to Pods</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Pod: {{.Name}}</h2>
+        <div class="actions">
+            <a href="/pods/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+            <a href="/pods/{{.Name}}/logs" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">Logs</a>
+            <form action="/pods/{{.Name}}/restart" method="POST" style="display:inline;" onsubmit="return confirm('Restart pod {{.Name}}?');">
+                <button type="submit" class="btn btn-sm btn-danger">Restart</button>
+            </form>
+            <form action="/pods/{{.Name}}/delete" method="POST" style="display:inline;" onsubmit="return confirm('Delete pod {{.Name}}?');">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+    <div class="detail-grid">
+        <div class="detail-item">
+            <label>Status</label>
+            <div class="{{if eq .Status "Running"}}status-success{{else}}status-warning{{end}}">{{.Status}}</div>
+        </div>
+        <div class="detail-item">
+            <label>Namespace</label>
+            <div>{{.Namespace}}</div>
+        </div>
+        <div class="detail-item">
+            <label>Node</label>
+            <div>{{.Node}}</div>
+        </div>
+        <div class="detail-item">
+            <label>IP</label>
+            <div>{{.IP}}</div>
+        </div>
+        <div class="detail-item">
+            <label>Age</label>
+            <div>{{.Age}}</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Containers</h3>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Image</th>
+                <th>Ready</th>
+                <th>Restarts</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Containers}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td style="font-family: monospace; font-size: 0.85em;">{{.Image}}</td>
+                <td>{{if .Ready}}✅{{else}}❌{{end}}</td>
+                <td>{{.Restarts}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Conditions</h3>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Last Transition</th>
+                <th>Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Conditions}}
+            <tr>
+                <td>{{.Type}}</td>
+                <td>
+                    <span class="status-badge {{if eq .Status "True"}}status-success{{else}}status-neutral{{end}}">
+                        {{.Status}}
+                    </span>
+                </td>
+                <td>{{formatAge .LastTransitionTime.Time}} ago</td>
+                <td>{{.Reason}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</div>
+{{end}}

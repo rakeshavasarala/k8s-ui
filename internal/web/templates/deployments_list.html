@@ -1,0 +1,57 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Deployments - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Deployments</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Ready</th>
+                    <th>Replicas</th>
+                    <th>Images</th>
+                    <th>Age</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Deployments}}
+                <tr>
+                    <td style="font-weight: 500;">{{.Name}}</td>
+                    <td>{{.Ready}}</td>
+                    <td>{{.Replicas}}</td>
+                    <td style="font-family: monospace; font-size: 0.85em;">
+                        {{range .Images}}
+                        <div>{{.}}</div>
+                        {{end}}
+                    </td>
+                    <td>{{.Age}}</td>
+                    <td>
+                        <div class="actions">
+                            <a href="/deployments/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                            <form action="/deployments/{{.Name}}/scale" method="POST" style="display: flex; gap: 0.25rem;">
+                                <input type="number" name="replicas" value="{{.Replicas}}" style="width: 60px; padding: 0.25rem;" min="0">
+                                <button type="submit" class="btn btn-sm btn-primary">Scale</button>
+                            </form>
+                            <form action="/deployments/{{.Name}}/restart" method="POST" onsubmit="return confirm('Restart deployment {{.Name}}?');">
+                                <button type="submit" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">Restart</button>
+                            </form>
+                            <a href="/deployments/{{.Name}}/edit" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">Edit</a>
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No deployments found in namespace {{.Namespace}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}

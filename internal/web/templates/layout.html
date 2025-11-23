@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}k8s-ui{{end}}</title>
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --bg-header: #0f172a;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #334155;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --radius: 8px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--accent-hover);
+        }
+
+        header {
+            background-color: var(--bg-header);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.125rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            margin-right: 2rem;
+        }
+
+        .nav {
+            display: flex;
+            gap: 0.5rem;
+            overflow-x: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE 10+ */
+        }
+        .nav::-webkit-scrollbar { 
+            display: none;  /* Chrome Safari */
+        }
+
+        .nav a {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: var(--radius);
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav a.active {
+            color: white;
+            background: var(--accent);
+        }
+
+        .cluster-info {
+            display: flex;
+            align-items: center;
+            margin-left: 1rem;
+        }
+
+        .select-custom {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.375rem 2rem 0.375rem 0.75rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394a3b8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            max-width: 200px;
+            text-overflow: ellipsis;
+        }
+
+        .select-custom:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .select-custom:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .namespace-badge {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        main {
+            padding: 2rem;
+            max-width: 90%;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .card-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.925rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-success { background: rgba(34, 197, 94, 0.1); color: var(--success); }
+        .status-error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
+        .status-warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .status-neutral { background: rgba(148, 163, 184, 0.1); color: var(--text-secondary); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        input[type="text"], input[type="number"], textarea {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            width: 100%;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .detail-item label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-item div {
+            font-weight: 500;
+        }
+
+        pre {
+            background: #000;
+            padding: 1rem;
+            border-radius: var(--radius);
+            overflow-x: auto;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span style="color: var(--accent); margin-right: 4px;">⎈</span> K8s UI
+        </div>
+        <div class="nav">
+            <a href="/pods" class="{{if eq .Active "pods"}}active{{end}}">Pods</a>
+            <a href="/deployments" class="{{if eq .Active "deployments"}}active{{end}}">Deployments</a>
+            <a href="/statefulsets" class="{{if eq .Active "statefulsets"}}active{{end}}">StatefulSets</a>
+            <a href="/jobs" class="{{if eq .Active "jobs"}}active{{end}}">Jobs</a>
+            <a href="/cronjobs" class="{{if eq .Active "cronjobs"}}active{{end}}">CronJobs</a>
+            <a href="/configmaps" class="{{if eq .Active "configmaps"}}active{{end}}">ConfigMaps</a>
+            <a href="/secrets" class="{{if eq .Active "secrets"}}active{{end}}">Secrets</a>
+            <a href="/pvcs" class="{{if eq .Active "pvcs"}}active{{end}}">PVCs</a>
+            <a href="/events" class="{{if eq .Active "events"}}active{{end}}">Events</a>
+        </div>
+        <div class="cluster-info">
+            {{if .IsLocal}}
+            <form action="/api/switch-context" method="POST" style="display:inline-block; margin-right: 8px;">
+                <select name="context" onchange="this.form.submit()" class="select-custom" title="Switch Context">
+                    {{range .Contexts}}
+                    <option value="{{.}}" {{if eq . $.CurrentContext}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </form>
+            {{end}}
+            
+            {{if .Namespaces}}
+            <form action="/api/switch-namespace" method="POST" style="display:inline-block;">
+                <select name="namespace" onchange="this.form.submit()" class="select-custom" title="Switch Namespace">
+                    {{range .Namespaces}}
+                    <option value="{{.}}" {{if eq . $.CurrentNamespace}}selected{{end}}>{{.}}</option>
+                    {{end}}
+                </select>
+            </form>
+            {{else}}
+            <span class="namespace-badge">{{.Namespace}}</span>
+            {{end}}
+            
+            <button id="auto-refresh-btn" class="btn btn-sm" style="margin-left: 10px; background: transparent; border: 1px solid var(--border); color: var(--text-secondary);" onclick="toggleAutoRefresh()">
+                <span id="refresh-icon">↻</span> Auto Refresh
+            </button>
+        </div>
+    </header>
+
+    <main>
+        {{block "content" .}}{{end}}
+    </main>
+
+    <script>
+        const REFRESH_INTERVAL = 5000; // 5 seconds
+        let refreshTimer = null;
+
+        function toggleAutoRefresh() {
+            const isEnabled = localStorage.getItem('autoRefresh') === 'true';
+            if (isEnabled) {
+                disableAutoRefresh();
+            } else {
+                enableAutoRefresh();
+            }
+        }
+
+        function enableAutoRefresh() {
+            localStorage.setItem('autoRefresh', 'true');
+            updateRefreshButton(true);
+            refreshTimer = setTimeout(() => window.location.reload(), REFRESH_INTERVAL);
+        }
+
+        function disableAutoRefresh() {
+            localStorage.setItem('autoRefresh', 'false');
+            updateRefreshButton(false);
+            if (refreshTimer) {
+                clearTimeout(refreshTimer);
+                refreshTimer = null;
+            }
+        }
+
+        function updateRefreshButton(isEnabled) {
+            const btn = document.getElementById('auto-refresh-btn');
+            const icon = document.getElementById('refresh-icon');
+            if (isEnabled) {
+                btn.style.color = 'var(--accent)';
+                btn.style.borderColor = 'var(--accent)';
+                icon.innerHTML = '⏳';
+                btn.title = "Click to disable auto-refresh";
+            } else {
+                btn.style.color = 'var(--text-secondary)';
+                btn.style.borderColor = 'var(--border)';
+                icon.innerHTML = '↻';
+                btn.title = "Click to enable auto-refresh (5s)";
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const isEnabled = localStorage.getItem('autoRefresh') === 'true';
+            if (isEnabled) {
+                enableAutoRefresh();
+            } else {
+                updateRefreshButton(false);
+            }
+        });
+    </script>
+</body>
+</html>
