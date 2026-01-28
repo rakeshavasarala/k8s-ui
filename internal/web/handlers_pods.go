@@ -80,7 +80,7 @@ type PodDetailPage struct {
 
 func (s *Server) handlePodDetail(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/pods/")
-	
+
 	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -156,7 +156,29 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	name := parts[2]
 
+	// Get pod to fetch container list
+	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Build container list
+	var containerNames []string
+	for _, c := range pod.Spec.Containers {
+		containerNames = append(containerNames, c.Name)
+	}
+	if len(containerNames) == 0 {
+		http.Error(w, "No containers found in pod", http.StatusBadRequest)
+		return
+	}
+
 	container := r.URL.Query().Get("container")
+	// Default to first container if not specified
+	if container == "" {
+		container = containerNames[0]
+	}
+
 	tailLinesStr := r.URL.Query().Get("tailLines")
 	followStr := r.URL.Query().Get("follow")
 
@@ -186,7 +208,7 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	if follow {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Header().Set("Transfer-Encoding", "chunked")
-		
+
 		flusher, ok := w.(http.Flusher)
 		if !ok {
 			http.Error(w, "Streaming not supported", http.StatusInternalServerError)
@@ -216,18 +238,20 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 
 		data := struct {
 			BasePage
-			Name      string
-			Container string
-			Logs      string
-			TailLines int64
-			Follow    bool
+			Name       string
+			Container  string
+			Containers []string
+			Logs       string
+			TailLines  int64
+			Follow     bool
 		}{
-			BasePage:  BasePage{Namespace: s.manager.Namespace(), Title: "Logs: " + name, Active: "pods"},
-			Name:      name,
-			Container: container,
-			Logs:      buf.String(),
-			TailLines: tailLines,
-			Follow:    false,
+			BasePage:   BasePage{Namespace: s.manager.Namespace(), Title: "Logs: " + name, Active: "pods"},
+			Name:       name,
+			Container:  container,
+			Containers: containerNames,
+			Logs:       buf.String(),
+			TailLines:  tailLines,
+			Follow:     false,
 		}
 		s.renderTemplate(w, "pods_logs.html", data)
 	}

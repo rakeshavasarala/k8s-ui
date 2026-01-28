@@ -49,7 +49,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/deployments/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		sub := path[len("/deployments/"):]
-		
+
 		if len(sub) > 8 && sub[len(sub)-8:] == "/restart" {
 			s.handleDeploymentRestart(w, r)
 			return
@@ -70,7 +70,7 @@ func (s *Server) registerRoutes() {
 			s.handleDeploymentYAML(w, r)
 			return
 		}
-		
+
 		http.Redirect(w, r, "/deployments", http.StatusFound)
 	})
 
@@ -105,6 +105,16 @@ func (s *Server) registerRoutes() {
 		http.Redirect(w, r, "/cronjobs", http.StatusFound)
 	})
 
+	// Networking
+	s.mux.HandleFunc("/ingresses", s.handleIngressList)
+	s.mux.HandleFunc("/ingresses/", func(w http.ResponseWriter, r *http.Request) {
+		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
+			s.handleIngressYAML(w, r)
+			return
+		}
+		http.Redirect(w, r, "/ingresses", http.StatusFound)
+	})
+
 	// Config
 	s.mux.HandleFunc("/configmaps", s.handleConfigMapsList)
 	s.mux.HandleFunc("/configmaps/", func(w http.ResponseWriter, r *http.Request) {
@@ -119,18 +129,18 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/secrets/", func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		sub := path[len("/secrets/"):]
-		
+
 		if len(sub) > 5 && sub[len(sub)-5:] == "/yaml" {
 			s.handleSecretYAML(w, r)
 			return
 		}
-		
+
 		// Detail view
 		if sub != "" {
 			s.handleSecretDetail(w, r)
 			return
 		}
-		
+
 		http.Redirect(w, r, "/secrets", http.StatusFound)
 	})
 
