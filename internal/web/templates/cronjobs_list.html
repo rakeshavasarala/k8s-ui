@@ -25,13 +25,29 @@
                 <tr>
                     <td style="font-weight: 500;">{{.Name}}</td>
                     <td>{{.Schedule}}</td>
-                    <td>{{if .Suspend}}Yes{{else}}No{{end}}</td>
+                    <td>
+                        {{if .Suspend}}
+                        <span class="status-badge status-warning">Suspended</span>
+                        {{else}}
+                        <span class="status-badge status-success">Active</span>
+                        {{end}}
+                    </td>
                     <td>{{.Active}}</td>
                     <td>{{.LastScheduleTime}}</td>
                     <td>{{.Age}}</td>
                     <td>
                         <div class="actions">
                             <a href="/cronjobs/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                            <form action="/cronjobs/{{.Name}}/suspend" method="POST">
+                                {{if .Suspend}}
+                                <button type="submit" class="btn btn-sm btn-primary">Resume</button>
+                                {{else}}
+                                <button type="submit" class="btn btn-sm" style="background: rgba(245, 158, 11, 0.2); color: var(--warning);">Suspend</button>
+                                {{end}}
+                            </form>
+                            <form action="/cronjobs/{{.Name}}/trigger" method="POST" onsubmit="return confirm('Trigger a new job from {{.Name}}?');">
+                                <button type="submit" class="btn btn-sm btn-primary">Trigger</button>
+                            </form>
                         </div>
                     </td>
                 </tr>

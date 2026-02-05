@@ -34,6 +34,9 @@
                     <td>
                         <div class="actions">
                             <a href="/jobs/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                            <form action="/jobs/{{.Name}}/delete" method="POST" onsubmit="return confirm('Delete job {{.Name}}? This will also delete associated pods.');">
+                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                            </form>
                         </div>
                     </td>
                 </tr>

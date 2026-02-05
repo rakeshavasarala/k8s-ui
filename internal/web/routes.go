@@ -80,7 +80,18 @@ func (s *Server) registerRoutes() {
 	// Workloads
 	s.mux.HandleFunc("/statefulsets", s.handleStatefulSetsList)
 	s.mux.HandleFunc("/statefulsets/", func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
+		path := r.URL.Path
+		sub := path[len("/statefulsets/"):]
+
+		if len(sub) > 8 && sub[len(sub)-8:] == "/restart" {
+			s.handleStatefulSetRestart(w, r)
+			return
+		}
+		if len(sub) > 6 && sub[len(sub)-6:] == "/scale" {
+			s.handleStatefulSetScale(w, r)
+			return
+		}
+		if len(sub) > 5 && sub[len(sub)-5:] == "/yaml" {
 			s.handleStatefulSetYAML(w, r)
 			return
 		}
@@ -89,7 +100,14 @@ func (s *Server) registerRoutes() {
 
 	s.mux.HandleFunc("/jobs", s.handleJobsList)
 	s.mux.HandleFunc("/jobs/", func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
+		path := r.URL.Path
+		sub := path[len("/jobs/"):]
+
+		if len(sub) > 7 && sub[len(sub)-7:] == "/delete" {
+			s.handleJobDelete(w, r)
+			return
+		}
+		if len(sub) > 5 && sub[len(sub)-5:] == "/yaml" {
 			s.handleJobYAML(w, r)
 			return
 		}
@@ -98,7 +116,18 @@ func (s *Server) registerRoutes() {
 
 	s.mux.HandleFunc("/cronjobs", s.handleCronJobsList)
 	s.mux.HandleFunc("/cronjobs/", func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
+		path := r.URL.Path
+		sub := path[len("/cronjobs/"):]
+
+		if len(sub) > 8 && sub[len(sub)-8:] == "/suspend" {
+			s.handleCronJobSuspend(w, r)
+			return
+		}
+		if len(sub) > 8 && sub[len(sub)-8:] == "/trigger" {
+			s.handleCronJobTrigger(w, r)
+			return
+		}
+		if len(sub) > 5 && sub[len(sub)-5:] == "/yaml" {
 			s.handleCronJobYAML(w, r)
 			return
 		}
@@ -106,6 +135,15 @@ func (s *Server) registerRoutes() {
 	})
 
 	// Networking
+	s.mux.HandleFunc("/services", s.handleServicesList)
+	s.mux.HandleFunc("/services/", func(w http.ResponseWriter, r *http.Request) {
+		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
+			s.handleServiceYAML(w, r)
+			return
+		}
+		http.Redirect(w, r, "/services", http.StatusFound)
+	})
+
 	s.mux.HandleFunc("/ingresses", s.handleIngressList)
 	s.mux.HandleFunc("/ingresses/", func(w http.ResponseWriter, r *http.Request) {
 		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
