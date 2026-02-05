@@ -1,0 +1,206 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Exec: {{.Name}} - k8s-ui{{end}}
+
+{{define "content"}}
+<div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+    <a href="/pods/{{.Name}}">← Back to Pod</a>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        {{if gt (len .Containers) 1}}
+        <label style="font-size: 0.875rem; color: var(--text-secondary);">Container:</label>
+        <select id="container-select" style="padding: 0.25rem 0.5rem; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white;">
+            {{range .Containers}}
+            <option value="{{.}}" {{if eq . $.Container}}selected{{end}}>{{.}}</option>
+            {{end}}
+        </select>
+        {{end}}
+        <button id="reconnect-btn" class="btn btn-sm btn-primary" style="display: none;">Reconnect</button>
+    </div>
+</div>
+
+<div class="card" style="overflow: hidden;">
+    <div class="card-header" style="padding: 0.5rem 1rem;">
+        <h2 class="card-title" style="font-size: 0.875rem;">Terminal: {{.Name}} ({{.Container}})</h2>
+        <div id="connection-status" style="font-size: 0.75rem; color: var(--text-secondary);">Connecting...</div>
+    </div>
+    <div id="terminal" style="background: #000; padding: 4px;"></div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+
+<script>
+(function() {
+    const podName = "{{.Name}}";
+    let container = "{{.Container}}";
+    let ws = null;
+    let term = null;
+    let fitAddon = null;
+
+    function getWebSocketURL() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${window.location.host}/pods/${podName}/exec/ws?container=${encodeURIComponent(container)}`;
+    }
+
+    function updateStatus(status, isError = false) {
+        const statusEl = document.getElementById('connection-status');
+        statusEl.textContent = status;
+        statusEl.style.color = isError ? 'var(--error)' : 'var(--text-secondary)';
+    }
+
+    function showReconnect() {
+        document.getElementById('reconnect-btn').style.display = 'inline-flex';
+    }
+
+    function hideReconnect() {
+        document.getElementById('reconnect-btn').style.display = 'none';
+    }
+
+    function initTerminal() {
+        if (term) {
+            term.dispose();
+        }
+
+        term = new Terminal({
+            cursorBlink: true,
+            cursorStyle: 'block',
+            fontSize: 14,
+            fontFamily: "'Menlo', 'Monaco', 'Courier New', monospace",
+            theme: {
+                background: '#000000',
+                foreground: '#f8fafc',
+                cursor: '#f8fafc',
+                cursorAccent: '#000000',
+                selection: 'rgba(59, 130, 246, 0.3)',
+                black: '#000000',
+                red: '#ef4444',
+                green: '#22c55e',
+                yellow: '#f59e0b',
+                blue: '#3b82f6',
+                magenta: '#a855f7',
+                cyan: '#06b6d4',
+                white: '#f8fafc',
+                brightBlack: '#64748b',
+                brightRed: '#f87171',
+                brightGreen: '#4ade80',
+                brightYellow: '#fbbf24',
+                brightBlue: '#60a5fa',
+                brightMagenta: '#c084fc',
+                brightCyan: '#22d3ee',
+                brightWhite: '#ffffff'
+            },
+            scrollback: 10000,
+            allowTransparency: true
+        });
+
+        fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.loadAddon(new WebLinksAddon.WebLinksAddon());
+
+        const terminalEl = document.getElementById('terminal');
+        term.open(terminalEl);
+        fitAddon.fit();
+
+        return term;
+    }
+
+    function connect() {
+        hideReconnect();
+        updateStatus('Connecting...');
+
+        term = initTerminal();
+        term.clear();
+
+        ws = new WebSocket(getWebSocketURL());
+
+        ws.onopen = function() {
+            updateStatus('Connected');
+            // Send initial size
+            sendResize();
+        };
+
+        ws.onmessage = function(event) {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === 'output') {
+                    term.write(msg.data);
+                }
+            } catch (e) {
+                console.error('Failed to parse message:', e);
+            }
+        };
+
+        ws.onclose = function() {
+            updateStatus('Disconnected', true);
+            showReconnect();
+        };
+
+        ws.onerror = function(err) {
+            updateStatus('Connection error', true);
+            showReconnect();
+        };
+
+        // Handle terminal input
+        term.onData(function(data) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'input', data: data }));
+            }
+        });
+    }
+
+    function sendResize() {
+        if (ws && ws.readyState === WebSocket.OPEN && fitAddon) {
+            const dims = fitAddon.proposeDimensions();
+            if (dims) {
+                ws.send(JSON.stringify({
+                    type: 'resize',
+                    cols: dims.cols,
+                    rows: dims.rows
+                }));
+            }
+        }
+    }
+
+    // Handle window resize
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            if (fitAddon) {
+                fitAddon.fit();
+                sendResize();
+            }
+        }, 100);
+    });
+
+    // Handle container change
+    const containerSelect = document.getElementById('container-select');
+    if (containerSelect) {
+        containerSelect.addEventListener('change', function() {
+            container = this.value;
+            if (ws) {
+                ws.close();
+            }
+            connect();
+        });
+    }
+
+    // Handle reconnect button
+    document.getElementById('reconnect-btn').addEventListener('click', function() {
+        connect();
+    });
+
+    // Initial connection
+    connect();
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (ws) {
+            ws.close();
+        }
+    });
+})();
+</script>
+{{end}}

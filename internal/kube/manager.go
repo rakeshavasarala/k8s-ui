@@ -176,6 +176,7 @@ func (m *Manager) SwitchContext(name string) error {
 	}
 
 	m.clientset = clientset
+	m.clientConfig = clientConfig
 	
 	// Update namespace to the new context's default if available, or keep current?
 	// Usually switching context implies switching to that context's namespace.
@@ -187,4 +188,17 @@ func (m *Manager) SwitchContext(name string) error {
 	}
 
 	return nil
+}
+
+// RESTConfig returns the REST config for the current context.
+func (m *Manager) RESTConfig() (*rest.Config, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if !m.isLocal {
+		// In-cluster mode
+		return rest.InClusterConfig()
+	}
+
+	return m.clientConfig.ClientConfig()
 }

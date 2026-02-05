@@ -28,6 +28,18 @@ func (s *Server) registerRoutes() {
 			s.handlePodLogs(w, r)
 			return
 		}
+		if len(sub) > 14 && sub[len(sub)-14:] == "/logs/download" {
+			s.handlePodLogsDownload(w, r)
+			return
+		}
+		if len(sub) > 5 && sub[len(sub)-5:] == "/exec" {
+			s.handlePodExec(w, r)
+			return
+		}
+		if len(sub) > 8 && sub[len(sub)-8:] == "/exec/ws" {
+			s.handlePodExecWS(w, r)
+			return
+		}
 		if len(sub) > 8 && sub[len(sub)-8:] == "/restart" {
 			s.handlePodRestart(w, r)
 			return

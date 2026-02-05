@@ -2,14 +2,18 @@ package web
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/gorilla/websocket"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/remotecommand"
 	"sigs.k8s.io/yaml"
 )
 
@@ -291,4 +295,263 @@ func (s *Server) handlePodYAML(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, "yaml_view.html", data)
+}
+
+// handlePodLogsDownload downloads pod logs as a file
+func (s *Server) handlePodLogsDownload(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	name := parts[2]
+
+	// Get pod to fetch container list
+	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Get container from query or default to first
+	container := r.URL.Query().Get("container")
+	if container == "" && len(pod.Spec.Containers) > 0 {
+		container = pod.Spec.Containers[0].Name
+	}
+
+	// Check for previous logs
+	previous := r.URL.Query().Get("previous") == "true"
+
+	opts := &corev1.PodLogOptions{
+		Container: container,
+		Previous:  previous,
+	}
+
+	req := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).GetLogs(name, opts)
+	stream, err := req.Stream(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer stream.Close()
+
+	// Set headers for file download
+	filename := fmt.Sprintf("%s-%s.log", name, container)
+	if previous {
+		filename = fmt.Sprintf("%s-%s-previous.log", name, container)
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+
+	// Stream logs to response
+	_, err = io.Copy(w, stream)
+	if err != nil {
+		// Can't send error as headers already sent
+		return
+	}
+}
+
+// handlePodExec renders the exec terminal page
+func (s *Server) handlePodExec(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	name := parts[2]
+
+	// Get pod to fetch container list
+	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var containerNames []string
+	for _, c := range pod.Spec.Containers {
+		containerNames = append(containerNames, c.Name)
+	}
+
+	container := r.URL.Query().Get("container")
+	if container == "" && len(containerNames) > 0 {
+		container = containerNames[0]
+	}
+
+	data := struct {
+		BasePage
+		Name       string
+		Container  string
+		Containers []string
+	}{
+		BasePage:   BasePage{Namespace: s.manager.Namespace(), Title: "Exec: " + name, Active: "pods"},
+		Name:       name,
+		Container:  container,
+		Containers: containerNames,
+	}
+
+	s.renderTemplate(w, "pods_exec.html", data)
+}
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow connections from any origin
+	},
+}
+
+// TerminalMessage represents a message to/from the terminal
+type TerminalMessage struct {
+	Type string `json:"type"` // "input", "output", "resize"
+	Data string `json:"data,omitempty"`
+	Rows uint16 `json:"rows,omitempty"`
+	Cols uint16 `json:"cols,omitempty"`
+}
+
+// handlePodExecWS handles the WebSocket connection for exec
+func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	name := parts[2]
+
+	container := r.URL.Query().Get("container")
+	if container == "" {
+		http.Error(w, "Container is required", http.StatusBadRequest)
+		return
+	}
+
+	// Upgrade to WebSocket
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, "Failed to upgrade to WebSocket: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer conn.Close()
+
+	// Get REST config
+	restConfig, err := s.manager.RESTConfig()
+	if err != nil {
+		conn.WriteJSON(TerminalMessage{Type: "output", Data: "Error getting REST config: " + err.Error()})
+		return
+	}
+
+	// Create exec request
+	req := s.manager.Client().CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(name).
+		Namespace(s.manager.Namespace()).
+		SubResource("exec").
+		Param("container", container).
+		Param("stdin", "true").
+		Param("stdout", "true").
+		Param("stderr", "true").
+		Param("tty", "true").
+		Param("command", "/bin/sh").
+		Param("command", "-c").
+		Param("command", "TERM=xterm-256color; export TERM; [ -x /bin/bash ] && exec /bin/bash || exec /bin/sh")
+
+	exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
+	if err != nil {
+		conn.WriteJSON(TerminalMessage{Type: "output", Data: "Error creating executor: " + err.Error()})
+		return
+	}
+
+	// Create pipes for stdin/stdout
+	stdinReader, stdinWriter := io.Pipe()
+	stdoutReader, stdoutWriter := io.Pipe()
+
+	// Terminal size handler
+	sizeChan := make(chan remotecommand.TerminalSize, 1)
+	// Initial size
+	sizeChan <- remotecommand.TerminalSize{Width: 120, Height: 30}
+
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+
+	// Read from WebSocket and write to stdin
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer stdinWriter.Close()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_, message, err := conn.ReadMessage()
+				if err != nil {
+					return
+				}
+
+				var msg TerminalMessage
+				if err := json.Unmarshal(message, &msg); err != nil {
+					continue
+				}
+
+				switch msg.Type {
+				case "input":
+					stdinWriter.Write([]byte(msg.Data))
+				case "resize":
+					select {
+					case sizeChan <- remotecommand.TerminalSize{Width: msg.Cols, Height: msg.Rows}:
+					default:
+					}
+				}
+			}
+		}
+	}()
+
+	// Read from stdout and write to WebSocket
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		buf := make([]byte, 4096)
+		for {
+			n, err := stdoutReader.Read(buf)
+			if err != nil {
+				return
+			}
+			if n > 0 {
+				msg := TerminalMessage{Type: "output", Data: string(buf[:n])}
+				if err := conn.WriteJSON(msg); err != nil {
+					return
+				}
+			}
+		}
+	}()
+
+	// Run the exec
+	err = exec.StreamWithContext(r.Context(), remotecommand.StreamOptions{
+		Stdin:             stdinReader,
+		Stdout:            stdoutWriter,
+		Stderr:            stdoutWriter,
+		Tty:               true,
+		TerminalSizeQueue: &terminalSizeQueue{sizeChan: sizeChan},
+	})
+
+	close(done)
+	stdinReader.Close()
+	stdoutWriter.Close()
+
+	if err != nil {
+		conn.WriteJSON(TerminalMessage{Type: "output", Data: "\r\n\r\nSession ended: " + err.Error()})
+	} else {
+		conn.WriteJSON(TerminalMessage{Type: "output", Data: "\r\n\r\nSession ended."})
+	}
+
+	wg.Wait()
+}
+
+// terminalSizeQueue implements remotecommand.TerminalSizeQueue
+type terminalSizeQueue struct {
+	sizeChan chan remotecommand.TerminalSize
+}
+
+func (t *terminalSizeQueue) Next() *remotecommand.TerminalSize {
+	size, ok := <-t.sizeChan
+	if !ok {
+		return nil
+	}
+	return &size
 }
