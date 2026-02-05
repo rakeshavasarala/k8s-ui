@@ -1,0 +1,57 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Services - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Services</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Cluster IP</th>
+                    <th>External IP</th>
+                    <th>Ports</th>
+                    <th>Age</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Services}}
+                <tr>
+                    <td style="font-weight: 500;">{{.Name}}</td>
+                    <td>
+                        <span class="status-badge {{if eq .Type "LoadBalancer"}}status-success{{else if eq .Type "NodePort"}}status-warning{{else}}status-neutral{{end}}">
+                            {{.Type}}
+                        </span>
+                    </td>
+                    <td style="font-family: monospace; font-size: 0.85em;">{{.ClusterIP}}</td>
+                    <td style="font-family: monospace; font-size: 0.85em;">{{.ExternalIP}}</td>
+                    <td style="font-family: monospace; font-size: 0.85em;">
+                        {{range .Ports}}
+                        <div style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-bottom: 2px;">
+                            {{if .Name}}{{.Name}}: {{end}}{{.Port}}{{if .TargetPort}}/{{.TargetPort}}{{end}} {{.Protocol}}
+                        </div>
+                        {{end}}
+                    </td>
+                    <td>{{.Age}}</td>
+                    <td>
+                        <div class="actions">
+                            <a href="/services/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No services found in namespace {{.Namespace}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
