@@ -118,7 +118,18 @@ func (s *Server) registerRoutes() {
 	// Config
 	s.mux.HandleFunc("/configmaps", s.handleConfigMapsList)
 	s.mux.HandleFunc("/configmaps/", func(w http.ResponseWriter, r *http.Request) {
-		if len(r.URL.Path) > 5 && r.URL.Path[len(r.URL.Path)-5:] == "/yaml" {
+		path := r.URL.Path
+		sub := path[len("/configmaps/"):]
+
+		if len(sub) > 5 && sub[len(sub)-5:] == "/edit" {
+			if r.Method == http.MethodPost {
+				s.handleConfigMapEditPOST(w, r)
+			} else {
+				s.handleConfigMapEditGET(w, r)
+			}
+			return
+		}
+		if len(sub) > 5 && sub[len(sub)-5:] == "/yaml" {
 			s.handleConfigMapYAML(w, r)
 			return
 		}

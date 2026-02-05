@@ -1,0 +1,27 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Edit {{.Name}} - k8s-ui{{end}}
+
+{{define "content"}}
+<div style="margin-bottom: 1rem;">
+    <a href="/configmaps">← Back to ConfigMaps</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Edit ConfigMap: {{.Name}}</h2>
+    </div>
+    <div style="padding: 1.5rem;">
+        <div style="margin-bottom: 1rem; padding: 1rem; background: rgba(245, 158, 11, 0.1); color: var(--warning); border-radius: var(--radius); border: 1px solid rgba(245, 158, 11, 0.2);">
+            <strong>Warning:</strong> You are editing the raw YAML configuration. Be careful.
+        </div>
+        <form action="/configmaps/{{.Name}}/edit" method="POST">
+            <textarea name="yaml" rows="30" style="font-family: 'Menlo', 'Monaco', monospace; font-size: 0.9rem; line-height: 1.4;">{{.YAML}}</textarea>
+            <div style="margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <a href="/configmaps" class="btn" style="background: rgba(255,255,255,0.1);">Cancel</a>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{{end}}

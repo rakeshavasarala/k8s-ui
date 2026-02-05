@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -140,6 +141,72 @@ func (s *Server) handleConfigMapYAML(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderTemplate(w, "yaml_view.html", data)
+}
+
+func (s *Server) handleConfigMapEditGET(w http.ResponseWriter, r *http.Request) {
+	// /configmaps/{name}/edit
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	name := parts[2]
+
+	cm, err := s.manager.Client().CoreV1().ConfigMaps(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Clean up managedFields for cleaner YAML
+	cm.ManagedFields = nil
+
+	y, err := yaml.Marshal(cm)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := struct {
+		BasePage
+		Name string
+		YAML string
+	}{
+		BasePage: BasePage{Namespace: s.manager.Namespace(), Title: "Edit ConfigMap: " + name, Active: "configmaps"},
+		Name:     name,
+		YAML:     string(y),
+	}
+
+	s.renderTemplate(w, "configmaps_edit.html", data)
+}
+
+func (s *Server) handleConfigMapEditPOST(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) < 3 {
+		http.Error(w, "Invalid path", http.StatusBadRequest)
+		return
+	}
+	name := parts[2]
+
+	yamlContent := r.FormValue("yaml")
+
+	var cm corev1.ConfigMap
+	if err := yaml.Unmarshal([]byte(yamlContent), &cm); err != nil {
+		http.Error(w, "Invalid YAML: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Force namespace and name to match URL to prevent confusion
+	cm.Namespace = s.manager.Namespace()
+	cm.Name = name
+
+	_, err := s.manager.Client().CoreV1().ConfigMaps(s.manager.Namespace()).Update(r.Context(), &cm, metav1.UpdateOptions{})
+	if err != nil {
+		http.Error(w, "Update failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/configmaps", http.StatusSeeOther)
 }
 
 func (s *Server) handleSecretYAML(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,67 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Ingresses - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Ingresses</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Class</th>
+                    <th>Hosts</th>
+                    <th>Paths</th>
+                    <th>Age</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Ingresses}}
+                <tr>
+                    <td style="font-weight: 500;">{{.Name}}</td>
+                    <td>{{.Class}}</td>
+                    <td>
+                        {{range .Rules}}
+                        <div style="margin-bottom: 4px;">
+                            {{if eq .Host "*"}}
+                            <span style="color: var(--text-secondary);">*</span>
+                            {{else}}
+                            <a href="https://{{.Host}}" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 4px;">
+                                {{if .TLS}}<span style="color: var(--success);" title="TLS enabled">🔒</span>{{end}}
+                                {{.Host}}
+                                <span style="font-size: 0.75em; opacity: 0.7;">↗</span>
+                            </a>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </td>
+                    <td style="font-family: monospace; font-size: 0.85em;">
+                        {{range .Rules}}
+                        <div style="margin-bottom: 4px;">
+                            {{range .Paths}}
+                            <div style="background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; margin-bottom: 2px;">{{.}}</div>
+                            {{end}}
+                        </div>
+                        {{end}}
+                    </td>
+                    <td>{{.Age}}</td>
+                    <td>
+                        <div class="actions">
+                            <a href="/ingresses/{{.Name}}/yaml" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                        </div>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No ingresses found in namespace {{.Namespace}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}
