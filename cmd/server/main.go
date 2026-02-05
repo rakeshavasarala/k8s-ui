@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
@@ -8,7 +9,17 @@ import (
 	"github.com/rakeshavasarala/k8s-ui/internal/web"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Printf("version=%s commit=%s date=%s\n", version, commit, date)
+		return
+	}
 	namespace := os.Getenv("POD_NAMESPACE")
 	// If POD_NAMESPACE is not set, we pass empty string to NewManager
 	// so it can try to detect namespace from kubeconfig in local mode.
