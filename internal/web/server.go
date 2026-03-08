@@ -68,6 +68,10 @@ func (s *Server) handleSwitchNamespace(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Namespace is required", http.StatusBadRequest)
 		return
 	}
+	if !s.manager.IsNamespaceAllowed(ns) {
+		http.Error(w, "Namespace not allowed by POD_NAMESPACES", http.StatusForbidden)
+		return
+	}
 
 	s.manager.SetNamespace(ns)
 

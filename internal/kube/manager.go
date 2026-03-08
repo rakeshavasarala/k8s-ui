@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"k8s.io/client-go/kubernetes"
@@ -16,20 +17,27 @@ import (
 
 // Manager handles Kubernetes client and context state.
 type Manager struct {
-	mu          sync.RWMutex
-	clientset   kubernetes.Interface
-	namespace   string
-	rawConfig   api.Config
+	mu           sync.RWMutex
+	clientset    kubernetes.Interface
+	namespace    string
+	rawConfig    api.Config
 	clientConfig clientcmd.ClientConfig
-	isLocal     bool
+	isLocal      bool
+	allowedNamespaces []string
 }
 
 // NewManager initializes the manager.
 // It tries to load in-cluster config first. If that fails, it falls back to
 // ~/.kube/config (local mode).
-func NewManager(initialNamespace string) (*Manager, error) {
+func NewManager(initialNamespace string, allowedNamespaces []string) (*Manager, error) {
 	m := &Manager{
-		namespace: initialNamespace,
+		namespace:         strings.TrimSpace(initialNamespace),
+		allowedNamespaces: normalizeNamespaces(allowedNamespaces),
+	}
+	if len(m.allowedNamespaces) > 0 {
+		if m.namespace == "" || !m.isNamespaceAllowedLocked(m.namespace) {
+			m.namespace = m.allowedNamespaces[0]
+		}
 	}
 
 	// 1. Try in-cluster config
@@ -80,7 +88,7 @@ func NewManager(initialNamespace string) (*Manager, error) {
 	m.rawConfig = rawConfig
 
 	// If namespace is not provided, use the one from current context
-	if m.namespace == "" {
+		if m.namespace == "" {
 		ns, _, err := m.clientConfig.Namespace()
 		if err == nil && ns != "" {
 			m.namespace = ns
@@ -120,6 +128,20 @@ func (m *Manager) SetNamespace(ns string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.namespace = ns
+}
+
+func (m *Manager) AllowedNamespaces() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]string, len(m.allowedNamespaces))
+	copy(out, m.allowedNamespaces)
+	return out
+}
+
+func (m *Manager) IsNamespaceAllowed(ns string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.isNamespaceAllowedLocked(ns)
 }
 
 func (m *Manager) IsLocal() bool {
@@ -201,4 +223,41 @@ func (m *Manager) RESTConfig() (*rest.Config, error) {
 	}
 
 	return m.clientConfig.ClientConfig()
+}
+
+func (m *Manager) isNamespaceAllowedLocked(ns string) bool {
+	if len(m.allowedNamespaces) == 0 {
+		return true
+	}
+	ns = strings.TrimSpace(ns)
+	if ns == "" {
+		return false
+	}
+	for _, allowed := range m.allowedNamespaces {
+		if allowed == ns {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeNamespaces(namespaces []string) []string {
+	if len(namespaces) == 0 {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(namespaces))
+	result := make([]string, 0, len(namespaces))
+	for _, ns := range namespaces {
+		clean := strings.TrimSpace(ns)
+		if clean == "" {
+			continue
+		}
+		if _, ok := seen[clean]; ok {
+			continue
+		}
+		seen[clean] = struct{}{}
+		result = append(result, clean)
+	}
+	return result
 }

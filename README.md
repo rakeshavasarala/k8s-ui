@@ -2,6 +2,17 @@
 
 A single-binary, namespace-scoped Kubernetes UI console written in Go.
 
+## Configuration
+
+Environment variables:
+
+- `POD_NAMESPACE`: Initial namespace to use.
+- `POD_NAMESPACES`: Optional comma-separated namespace allowlist (for example: `dev,staging,prod`).
+  - When set, the UI namespace selector is limited to this list.
+  - In-cluster mode does not need `list namespaces` permission when this is set.
+  - If `POD_NAMESPACE` is set but not included in `POD_NAMESPACES`, the first namespace from `POD_NAMESPACES` is used.
+  - If `POD_NAMESPACES` is not set, the app keeps current auto behavior.
+
 ## Features
 - **Zero Dependencies**: Single static binary with embedded templates.
 - **Namespace Scoped**: Operates only within its own namespace (safe for multi-tenant).

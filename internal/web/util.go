@@ -23,6 +23,7 @@ type BasePage struct {
 	Namespaces       []string // Optional: if we want to list all available namespaces
 	CurrentNamespace string
 	IsLocal          bool
+	Warning          string
 } // e.g., "pods", "deployments"
 
 // FuncMap returns the template function map.
@@ -192,15 +193,26 @@ func (s *Server) updateBasePageField(f reflect.Value) {
 	// Get current state from manager
 	contexts, currentContext := s.manager.Contexts()
 	isLocal := s.manager.IsLocal()
+	allowedNamespaces := s.manager.AllowedNamespaces()
 
 	var namespaces []string
-	if s.manager.Client() != nil {
-		nsList, err := s.manager.Client().CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+	var warning string
+	if len(allowedNamespaces) > 0 {
+		namespaces = allowedNamespaces
+	} else if isLocal && s.manager.Client() != nil {
+		// Namespace listing is only useful in local mode where users can switch namespaces.
+		// In-cluster mode typically uses a fixed namespace and may not have list permissions.
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		nsList, err := s.manager.Client().CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		if err == nil {
 			for _, ns := range nsList.Items {
 				namespaces = append(namespaces, ns.Name)
 			}
 			sort.Strings(namespaces)
+		} else {
+			warning = "Unable to list namespaces. Set POD_NAMESPACE or login/refresh Kubernetes credentials."
 		}
 	}
 
@@ -215,6 +227,7 @@ func (s *Server) updateBasePageField(f reflect.Value) {
 		Namespaces:       namespaces,
 		CurrentNamespace: s.manager.Namespace(),
 		IsLocal:          isLocal,
+		Warning:          warning,
 	}
 
 	f.Set(reflect.ValueOf(newBase))

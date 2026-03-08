@@ -1,15 +1,26 @@
 # k8s-ui User Guide
 
-Welcome to `k8s-ui`, a lightweight, single-binary web interface for managing Kubernetes resources within a specific namespace. This guide will help you navigate and utilize the features of the application.
+Welcome to `k8s-ui`, a lightweight, single-binary web interface for managing Kubernetes resources within one or more namespaces. This guide will help you navigate and utilize the features of the application.
 
 ## Overview
 
 `k8s-ui` provides a real-time view of your Kubernetes resources. It is designed to be simple, fast, and focused on the most common operational tasks.
 
 **Key Features:**
-*   **Namespace Scoped**: Operates within a single namespace (defined at startup).
+*   **Namespace Scoped**: Operates within a configured namespace set.
 *   **Real-time**: Fetches data directly from the Kubernetes API.
 *   **Single Binary**: Easy to deploy and run.
+
+## Namespace Configuration
+
+You can control namespace scope using environment variables:
+
+* **`POD_NAMESPACE`**: Sets the initial namespace.
+* **`POD_NAMESPACES`**: Optional comma-separated allowlist (for example: `dev,staging,prod`).
+  * When set, users can switch only within this list.
+  * In in-cluster mode, this avoids requiring `list namespaces` RBAC.
+  * If `POD_NAMESPACE` is not in `POD_NAMESPACES`, the app uses the first namespace from `POD_NAMESPACES`.
+  * If `POD_NAMESPACES` is not set, the app keeps current auto namespace behavior.
 
 ## Navigation
 

@@ -343,6 +343,13 @@
     </header>
 
     <main>
+        {{if .Warning}}
+        <div class="card" style="border-color: rgba(245, 158, 11, 0.4); margin-bottom: 1rem;">
+            <div style="padding: 0.875rem 1rem; color: var(--warning); background: rgba(245, 158, 11, 0.08);">
+                <strong>Warning:</strong> {{.Warning}}
+            </div>
+        </div>
+        {{end}}
         {{block "content" .}}{{end}}
     </main>
 
