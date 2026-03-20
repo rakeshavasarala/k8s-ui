@@ -2,4 +2,4 @@ agents/*
 deployment/*
 vendor/*
 notes.txt
-Dockerfile.*
+company/**
