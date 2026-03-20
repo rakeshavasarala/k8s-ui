@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	corev1 "k8s.io/api/core/v1"
@@ -396,6 +397,8 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true // Allow connections from any origin
 	},
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 }
 
 // TerminalMessage represents a message to/from the terminal
@@ -428,6 +431,20 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+
+	// Configure WebSocket timeouts and ping/pong
+	const (
+		pingInterval = 30 * time.Second
+		pongWait     = 60 * time.Second
+		writeWait    = 10 * time.Second
+	)
+
+	// Set initial read deadline and pong handler
+	conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error {
+		conn.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
 
 	// Get REST config
 	restConfig, err := s.manager.RESTConfig()
@@ -469,6 +486,10 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
+	// Ping ticker to keep connection alive
+	ticker := time.NewTicker(pingInterval)
+	defer ticker.Stop()
+
 	// Read from WebSocket and write to stdin
 	wg.Add(1)
 	go func() {
@@ -478,11 +499,19 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 			select {
 			case <-done:
 				return
+			case <-ticker.C:
+				// Send ping every 30 seconds
+				conn.SetWriteDeadline(time.Now().Add(writeWait))
+				if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+					return
+				}
 			default:
 				_, message, err := conn.ReadMessage()
 				if err != nil {
 					return
 				}
+				// Update read deadline on successful read
+				conn.SetReadDeadline(time.Now().Add(pongWait))
 
 				var msg TerminalMessage
 				if err := json.Unmarshal(message, &msg); err != nil {
@@ -513,6 +542,7 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if n > 0 {
+				conn.SetWriteDeadline(time.Now().Add(writeWait))
 				msg := TerminalMessage{Type: "output", Data: string(buf[:n])}
 				if err := conn.WriteJSON(msg); err != nil {
 					return
