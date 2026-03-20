@@ -435,9 +435,17 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 	// Configure WebSocket timeouts and ping/pong
 	const (
 		pingInterval = 30 * time.Second
-		pongWait     = 60 * time.Second
+		pongWait     = 90 * time.Second
 		writeWait    = 10 * time.Second
 	)
+
+	var writeMu sync.Mutex
+	writeJSON := func(msg TerminalMessage) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		conn.SetWriteDeadline(time.Now().Add(writeWait))
+		return conn.WriteJSON(msg)
+	}
 
 	// Set initial read deadline and pong handler
 	conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -449,7 +457,7 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 	// Get REST config
 	restConfig, err := s.manager.RESTConfig()
 	if err != nil {
-		conn.WriteJSON(TerminalMessage{Type: "output", Data: "Error getting REST config: " + err.Error()})
+		_ = writeJSON(TerminalMessage{Type: "output", Data: "Error getting REST config: " + err.Error()})
 		return
 	}
 
@@ -470,7 +478,7 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 
 	exec, err := remotecommand.NewSPDYExecutor(restConfig, "POST", req.URL())
 	if err != nil {
-		conn.WriteJSON(TerminalMessage{Type: "output", Data: "Error creating executor: " + err.Error()})
+		_ = writeJSON(TerminalMessage{Type: "output", Data: "Error creating executor: " + err.Error()})
 		return
 	}
 
@@ -486,9 +494,28 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 	var wg sync.WaitGroup
 	done := make(chan struct{})
 
-	// Ping ticker to keep connection alive
-	ticker := time.NewTicker(pingInterval)
-	defer ticker.Stop()
+	// Ping loop keeps idle websocket sessions alive through ingress/proxies.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ticker := time.NewTicker(pingInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				writeMu.Lock()
+				conn.SetWriteDeadline(time.Now().Add(writeWait))
+				err := conn.WriteMessage(websocket.PingMessage, nil)
+				writeMu.Unlock()
+				if err != nil {
+					return
+				}
+			}
+		}
+	}()
 
 	// Read from WebSocket and write to stdin
 	wg.Add(1)
@@ -499,33 +526,28 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 			select {
 			case <-done:
 				return
-			case <-ticker.C:
-				// Send ping every 30 seconds
-				conn.SetWriteDeadline(time.Now().Add(writeWait))
-				if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-					return
-				}
 			default:
-				_, message, err := conn.ReadMessage()
-				if err != nil {
-					return
-				}
-				// Update read deadline on successful read
-				conn.SetReadDeadline(time.Now().Add(pongWait))
+			}
 
-				var msg TerminalMessage
-				if err := json.Unmarshal(message, &msg); err != nil {
-					continue
-				}
+			_, message, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			// Any inbound frame proves activity; extend read deadline.
+			conn.SetReadDeadline(time.Now().Add(pongWait))
 
-				switch msg.Type {
-				case "input":
-					stdinWriter.Write([]byte(msg.Data))
-				case "resize":
-					select {
-					case sizeChan <- remotecommand.TerminalSize{Width: msg.Cols, Height: msg.Rows}:
-					default:
-					}
+			var msg TerminalMessage
+			if err := json.Unmarshal(message, &msg); err != nil {
+				continue
+			}
+
+			switch msg.Type {
+			case "input":
+				_, _ = stdinWriter.Write([]byte(msg.Data))
+			case "resize":
+				select {
+				case sizeChan <- remotecommand.TerminalSize{Width: msg.Cols, Height: msg.Rows}:
+				default:
 				}
 			}
 		}
@@ -542,9 +564,8 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			if n > 0 {
-				conn.SetWriteDeadline(time.Now().Add(writeWait))
 				msg := TerminalMessage{Type: "output", Data: string(buf[:n])}
-				if err := conn.WriteJSON(msg); err != nil {
+				if err := writeJSON(msg); err != nil {
 					return
 				}
 			}
@@ -563,11 +584,12 @@ func (s *Server) handlePodExecWS(w http.ResponseWriter, r *http.Request) {
 	close(done)
 	stdinReader.Close()
 	stdoutWriter.Close()
+	close(sizeChan)
 
 	if err != nil {
-		conn.WriteJSON(TerminalMessage{Type: "output", Data: "\r\n\r\nSession ended: " + err.Error()})
+		_ = writeJSON(TerminalMessage{Type: "output", Data: "\r\n\r\nSession ended: " + err.Error()})
 	} else {
-		conn.WriteJSON(TerminalMessage{Type: "output", Data: "\r\n\r\nSession ended."})
+		_ = writeJSON(TerminalMessage{Type: "output", Data: "\r\n\r\nSession ended."})
 	}
 
 	wg.Wait()

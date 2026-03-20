@@ -38,6 +38,23 @@
     let ws = null;
     let term = null;
     let fitAddon = null;
+    let heartbeatTimer = null;
+
+    function startHeartbeat() {
+        stopHeartbeat();
+        heartbeatTimer = setInterval(function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 20000);
+    }
+
+    function stopHeartbeat() {
+        if (heartbeatTimer) {
+            clearInterval(heartbeatTimer);
+            heartbeatTimer = null;
+        }
+    }
 
     function getWebSocketURL() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -119,6 +136,7 @@
             updateStatus('Connected');
             // Send initial size
             sendResize();
+            startHeartbeat();
         };
 
         ws.onmessage = function(event) {
@@ -133,11 +151,13 @@
         };
 
         ws.onclose = function() {
+            stopHeartbeat();
             updateStatus('Disconnected', true);
             showReconnect();
         };
 
         ws.onerror = function(err) {
+            stopHeartbeat();
             updateStatus('Connection error', true);
             showReconnect();
         };
@@ -197,6 +217,7 @@
 
     // Cleanup on page unload
     window.addEventListener('beforeunload', function() {
+        stopHeartbeat();
         if (ws) {
             ws.close();
         }
