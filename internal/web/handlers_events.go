@@ -28,6 +28,9 @@ func (s *Server) handleEventsList(w http.ResponseWriter, r *http.Request) {
 
 	events, err := s.manager.Client().CoreV1().Events(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "events", "", "/events", "events") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

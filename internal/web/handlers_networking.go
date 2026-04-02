@@ -17,12 +17,12 @@ type ServicePortView struct {
 }
 
 type ServiceView struct {
-	Name        string
-	Type        string
-	ClusterIP   string
-	ExternalIP  string
-	Ports       []ServicePortView
-	Age         string
+	Name       string
+	Type       string
+	ClusterIP  string
+	ExternalIP string
+	Ports      []ServicePortView
+	Age        string
 }
 
 type ServicesListPage struct {
@@ -38,6 +38,9 @@ func (s *Server) handleServicesList(w http.ResponseWriter, r *http.Request) {
 
 	services, err := s.manager.Client().CoreV1().Services(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "services", "", "/services", "services") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -113,6 +116,9 @@ func (s *Server) handleServiceYAML(w http.ResponseWriter, r *http.Request) {
 
 	svc, err := s.manager.Client().CoreV1().Services(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "services", name, "/services", "services") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -140,16 +146,16 @@ func (s *Server) handleServiceYAML(w http.ResponseWriter, r *http.Request) {
 }
 
 type IngressRuleView struct {
-	Host    string
-	Paths   []string
-	TLS     bool
+	Host  string
+	Paths []string
+	TLS   bool
 }
 
 type IngressView struct {
-	Name    string
-	Class   string
-	Rules   []IngressRuleView
-	Age     string
+	Name  string
+	Class string
+	Rules []IngressRuleView
+	Age   string
 }
 
 type IngressesListPage struct {
@@ -165,6 +171,9 @@ func (s *Server) handleIngressList(w http.ResponseWriter, r *http.Request) {
 
 	ingresses, err := s.manager.Client().NetworkingV1().Ingresses(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "ingresses", "", "/ingresses", "ingresses") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -244,6 +253,9 @@ func (s *Server) handleIngressYAML(w http.ResponseWriter, r *http.Request) {
 
 	ing, err := s.manager.Client().NetworkingV1().Ingresses(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "ingresses", name, "/ingresses", "ingresses") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

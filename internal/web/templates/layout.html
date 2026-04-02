@@ -66,15 +66,9 @@
         .nav {
             display: flex;
             gap: 0.5rem;
-            overflow-x: auto;
-            scrollbar-width: none; /* Firefox */
-            -ms-overflow-style: none;  /* IE 10+ */
-        }
-        .nav::-webkit-scrollbar { 
-            display: none;  /* Chrome Safari */
         }
 
-        .nav a {
+        .nav a, .nav-trigger {
             color: var(--text-secondary);
             font-weight: 500;
             font-size: 0.875rem;
@@ -82,16 +76,52 @@
             border-radius: var(--radius);
             white-space: nowrap;
             transition: all 0.2s;
+            cursor: pointer;
+            user-select: none;
         }
 
-        .nav a:hover {
+        .nav a:hover, .nav-trigger:hover {
             color: var(--text-primary);
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .nav a.active {
+        .nav a.active, .nav-trigger.active {
             color: white;
             background: var(--accent);
+        }
+
+        .nav-item {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .nav .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.25rem;
+            min-width: 160px;
+            z-index: 200;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.35);
+        }
+
+        .nav-item:hover .dropdown-menu {
+            display: block;
+        }
+
+        .nav .dropdown-menu a {
+            display: block;
+        }
+
+        .caret {
+            font-size: 0.6rem;
+            opacity: 0.6;
+            margin-left: 2px;
         }
 
         .cluster-info {
@@ -301,17 +331,39 @@
             <span style="color: var(--accent); margin-right: 4px;">⎈</span> K8s UI
         </div>
         <div class="nav">
-            <a href="/pods" class="{{if eq .Active "pods"}}active{{end}}">Pods</a>
-            <a href="/deployments" class="{{if eq .Active "deployments"}}active{{end}}">Deployments</a>
-            <a href="/statefulsets" class="{{if eq .Active "statefulsets"}}active{{end}}">StatefulSets</a>
-            <a href="/jobs" class="{{if eq .Active "jobs"}}active{{end}}">Jobs</a>
-            <a href="/cronjobs" class="{{if eq .Active "cronjobs"}}active{{end}}">CronJobs</a>
-            <a href="/configmaps" class="{{if eq .Active "configmaps"}}active{{end}}">ConfigMaps</a>
-            <a href="/secrets" class="{{if eq .Active "secrets"}}active{{end}}">Secrets</a>
-            <a href="/pvcs" class="{{if eq .Active "pvcs"}}active{{end}}">PVCs</a>
-            <a href="/services" class="{{if eq .Active "services"}}active{{end}}">Services</a>
-            <a href="/ingresses" class="{{if eq .Active "ingresses"}}active{{end}}">Ingresses</a>
-            <a href="/events" class="{{if eq .Active "events"}}active{{end}}">Events</a>
+            <div class="nav-item">
+                <span class="nav-trigger {{if or (eq .Active "pods") (eq .Active "deployments") (eq .Active "statefulsets") (eq .Active "jobs") (eq .Active "cronjobs")}}active{{end}}">Workloads <span class="caret">▾</span></span>
+                <div class="dropdown-menu">
+                    <a href="/pods" class="{{if eq .Active "pods"}}active{{end}}">Pods</a>
+                    <a href="/deployments" class="{{if eq .Active "deployments"}}active{{end}}">Deployments</a>
+                    <a href="/statefulsets" class="{{if eq .Active "statefulsets"}}active{{end}}">StatefulSets</a>
+                    <a href="/jobs" class="{{if eq .Active "jobs"}}active{{end}}">Jobs</a>
+                    <a href="/cronjobs" class="{{if eq .Active "cronjobs"}}active{{end}}">CronJobs</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <span class="nav-trigger {{if or (eq .Active "configmaps") (eq .Active "secrets")}}active{{end}}">Config <span class="caret">▾</span></span>
+                <div class="dropdown-menu">
+                    <a href="/configmaps" class="{{if eq .Active "configmaps"}}active{{end}}">ConfigMaps</a>
+                    <a href="/secrets" class="{{if eq .Active "secrets"}}active{{end}}">Secrets</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <span class="nav-trigger {{if or (eq .Active "services") (eq .Active "ingresses")}}active{{end}}">Networking <span class="caret">▾</span></span>
+                <div class="dropdown-menu">
+                    <a href="/services" class="{{if eq .Active "services"}}active{{end}}">Services</a>
+                    <a href="/ingresses" class="{{if eq .Active "ingresses"}}active{{end}}">Ingresses</a>
+                </div>
+            </div>
+            <div class="nav-item">
+                <a href="/pvcs" class="{{if eq .Active "pvcs"}}active{{end}}">Storage</a>
+            </div>
+            <div class="nav-item">
+                <a href="/events" class="{{if eq .Active "events"}}active{{end}}">Events</a>
+            </div>
+            <div class="nav-item">
+                <a href="/resources" class="{{if eq .Active "resources"}}active{{end}}">Resources</a>
+            </div>
         </div>
         <div class="cluster-info">
             {{if .IsLocal}}

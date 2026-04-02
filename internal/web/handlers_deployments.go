@@ -37,6 +37,9 @@ func (s *Server) handleDeploymentsList(w http.ResponseWriter, r *http.Request) {
 
 	deployments, err := s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "deployments", "", "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -47,7 +50,7 @@ func (s *Server) handleDeploymentsList(w http.ResponseWriter, r *http.Request) {
 		for _, c := range d.Spec.Template.Spec.Containers {
 			images = append(images, c.Image)
 		}
-		
+
 		views = append(views, DeploymentView{
 			Name:        d.Name,
 			Ready:       fmt.Sprintf("%d/%d", d.Status.AvailableReplicas, *d.Spec.Replicas),
@@ -91,7 +94,7 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 			},
 		},
 	}
-	
+
 	payload, err := json.Marshal(patchData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -100,6 +103,9 @@ func (s *Server) handleDeploymentRestart(w http.ResponseWriter, r *http.Request)
 
 	_, err = s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).Patch(r.Context(), name, types.MergePatchType, payload, metav1.PatchOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "patch", "deployments", name, "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -128,10 +134,13 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	}
 	r32 := int32(replicas)
 
-	// We need to get the deployment first to avoid overwriting other fields if we used Update, 
+	// We need to get the deployment first to avoid overwriting other fields if we used Update,
 	// but here we can use Patch or just Get/Update. Get/Update is safer for simple logic.
 	d, err := s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "deployments", name, "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -139,6 +148,9 @@ func (s *Server) handleDeploymentScale(w http.ResponseWriter, r *http.Request) {
 	d.Spec.Replicas = &r32
 	_, err = s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).Update(r.Context(), d, metav1.UpdateOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "update", "deployments", name, "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -157,6 +169,9 @@ func (s *Server) handleDeploymentEditGET(w http.ResponseWriter, r *http.Request)
 
 	d, err := s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "deployments", name, "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -192,7 +207,7 @@ func (s *Server) handleDeploymentEditPOST(w http.ResponseWriter, r *http.Request
 	name := parts[2]
 
 	yamlContent := r.FormValue("yaml")
-	
+
 	var d appsv1.Deployment
 	if err := yaml.Unmarshal([]byte(yamlContent), &d); err != nil {
 		http.Error(w, "Invalid YAML: "+err.Error(), http.StatusBadRequest)
@@ -205,6 +220,9 @@ func (s *Server) handleDeploymentEditPOST(w http.ResponseWriter, r *http.Request
 
 	_, err := s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).Update(r.Context(), &d, metav1.UpdateOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "update", "deployments", name, "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, "Update failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -222,6 +240,9 @@ func (s *Server) handleDeploymentYAML(w http.ResponseWriter, r *http.Request) {
 
 	d, err := s.manager.Client().AppsV1().Deployments(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "deployments", name, "/deployments", "deployments") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -9,13 +9,13 @@ import (
 )
 
 type PVCView struct {
-	Name        string
-	Status      string
-	Volume      string
-	Capacity    string
-	AccessModes []string
+	Name         string
+	Status       string
+	Volume       string
+	Capacity     string
+	AccessModes  []string
 	StorageClass string
-	Age         string
+	Age          string
 }
 
 type PVCsListPage struct {
@@ -31,6 +31,9 @@ func (s *Server) handlePVCsList(w http.ResponseWriter, r *http.Request) {
 
 	pvcs, err := s.manager.Client().CoreV1().PersistentVolumeClaims(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "persistentvolumeclaims", "", "/pvcs", "pvcs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -81,6 +84,9 @@ func (s *Server) handlePVCYAML(w http.ResponseWriter, r *http.Request) {
 
 	pvc, err := s.manager.Client().CoreV1().PersistentVolumeClaims(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "persistentvolumeclaims", name, "/pvcs", "pvcs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

@@ -28,6 +28,9 @@ func (s *Server) handleConfigMapsList(w http.ResponseWriter, r *http.Request) {
 
 	cms, err := s.manager.Client().CoreV1().ConfigMaps(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "configmaps", "", "/configmaps", "configmaps") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -77,6 +80,9 @@ func (s *Server) handleSecretsList(w http.ResponseWriter, r *http.Request) {
 
 	secrets, err := s.manager.Client().CoreV1().Secrets(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "secrets", "", "/secrets", "secrets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -117,6 +123,9 @@ func (s *Server) handleConfigMapYAML(w http.ResponseWriter, r *http.Request) {
 
 	cm, err := s.manager.Client().CoreV1().ConfigMaps(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "configmaps", name, "/configmaps", "configmaps") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -154,6 +163,9 @@ func (s *Server) handleConfigMapEditGET(w http.ResponseWriter, r *http.Request) 
 
 	cm, err := s.manager.Client().CoreV1().ConfigMaps(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "configmaps", name, "/configmaps", "configmaps") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -202,6 +214,9 @@ func (s *Server) handleConfigMapEditPOST(w http.ResponseWriter, r *http.Request)
 
 	_, err := s.manager.Client().CoreV1().ConfigMaps(s.manager.Namespace()).Update(r.Context(), &cm, metav1.UpdateOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "update", "configmaps", name, "/configmaps", "configmaps") {
+			return
+		}
 		http.Error(w, "Update failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -219,6 +234,9 @@ func (s *Server) handleSecretYAML(w http.ResponseWriter, r *http.Request) {
 
 	sec, err := s.manager.Client().CoreV1().Secrets(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "secrets", name, "/secrets", "secrets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -266,6 +284,9 @@ func (s *Server) handleSecretDetail(w http.ResponseWriter, r *http.Request) {
 
 	sec, err := s.manager.Client().CoreV1().Secrets(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "secrets", name, "/secrets", "secrets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

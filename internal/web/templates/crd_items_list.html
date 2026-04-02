@@ -1,0 +1,41 @@
+{{template "layout.html" .}}
+
+{{define "title"}}CRD Instances - k8s-ui{{end}}
+
+{{define "content"}}
+<div style="margin-bottom: 1rem;">
+    <a href="{{.BackURL}}">← Back to Resources</a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">{{.ResourceID}} in namespace {{.Namespace}}</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Items}}
+                <tr>
+                    <td style="font-weight: 500;">{{.Name}}</td>
+                    <td>{{.Age}}</td>
+                    <td>
+                        <a href="{{.YAMLURL}}" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">YAML</a>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="3" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No resources found.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}

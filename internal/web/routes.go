@@ -89,6 +89,13 @@ func (s *Server) registerRoutes() {
 	// Events
 	s.mux.HandleFunc("/events", s.handleEventsList)
 
+	// Resources explorer
+	s.mux.HandleFunc("/resources", s.handleResourcesIndex)
+
+	// CRDs (read-only)
+	s.mux.HandleFunc("/crds", s.handleCRDsList)
+	s.mux.HandleFunc("/crds/", s.handleCRDsSubroutes)
+
 	// Workloads
 	s.mux.HandleFunc("/statefulsets", s.handleStatefulSetsList)
 	s.mux.HandleFunc("/statefulsets/", func(w http.ResponseWriter, r *http.Request) {

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -231,4 +232,38 @@ func (s *Server) updateBasePageField(f reflect.Value) {
 	}
 
 	f.Set(reflect.ValueOf(newBase))
+}
+
+func (s *Server) handleK8sForbidden(w http.ResponseWriter, err error, verb, resource, name, backURL, active string) bool {
+	if !apierrors.IsForbidden(err) {
+		return false
+	}
+
+	target := resource
+	if name != "" {
+		target = fmt.Sprintf("%s/%s", resource, name)
+	}
+
+	message := fmt.Sprintf("You are not allowed to %s %s in namespace %s.", verb, target, s.manager.Namespace())
+	title := fmt.Sprintf("Access denied for %s", resource)
+	s.renderPermissionDenied(w, title, message, backURL, active)
+	return true
+}
+
+func (s *Server) renderPermissionDenied(w http.ResponseWriter, title, message, backURL, active string) {
+	w.WriteHeader(http.StatusForbidden)
+
+	data := struct {
+		BasePage
+		TitleLine string
+		Message   string
+		BackURL   string
+	}{
+		BasePage:  BasePage{Namespace: s.manager.Namespace(), Title: "Access Denied", Active: active},
+		TitleLine: title,
+		Message:   message,
+		BackURL:   backURL,
+	}
+
+	s.renderTemplate(w, "permission_denied.html", data)
 }

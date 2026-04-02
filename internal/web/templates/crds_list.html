@@ -1,0 +1,41 @@
+{{template "layout.html" .}}
+
+{{define "title"}}CRDs - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Custom Resource Definitions</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Group</th>
+                    <th>Version</th>
+                    <th>Resource</th>
+                    <th>Kind</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Resources}}
+                <tr>
+                    <td style="font-family: monospace;">{{.Group}}</td>
+                    <td>{{.Version}}</td>
+                    <td>{{.Resource}}</td>
+                    <td>{{.Kind}}</td>
+                    <td>
+                        <a href="{{.ListURL}}" class="btn btn-sm" style="background: rgba(255,255,255,0.1);">List</a>
+                    </td>
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">No readable namespaced CRDs found in this cluster or namespace.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>
+{{end}}

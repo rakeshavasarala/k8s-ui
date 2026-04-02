@@ -35,6 +35,9 @@ func (s *Server) handleStatefulSetsList(w http.ResponseWriter, r *http.Request) 
 
 	ss, err := s.manager.Client().AppsV1().StatefulSets(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "statefulsets", "", "/statefulsets", "statefulsets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -83,6 +86,9 @@ func (s *Server) handleJobsList(w http.ResponseWriter, r *http.Request) {
 
 	jobs, err := s.manager.Client().BatchV1().Jobs(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "jobs", "", "/jobs", "jobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -152,6 +158,9 @@ func (s *Server) handleCronJobsList(w http.ResponseWriter, r *http.Request) {
 
 	cjs, err := s.manager.Client().BatchV1().CronJobs(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "cronjobs", "", "/cronjobs", "cronjobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -196,6 +205,9 @@ func (s *Server) handleStatefulSetYAML(w http.ResponseWriter, r *http.Request) {
 
 	ss, err := s.manager.Client().AppsV1().StatefulSets(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "statefulsets", name, "/statefulsets", "statefulsets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -232,6 +244,9 @@ func (s *Server) handleJobYAML(w http.ResponseWriter, r *http.Request) {
 
 	j, err := s.manager.Client().BatchV1().Jobs(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "jobs", name, "/jobs", "jobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -268,6 +283,9 @@ func (s *Server) handleCronJobYAML(w http.ResponseWriter, r *http.Request) {
 
 	cj, err := s.manager.Client().BatchV1().CronJobs(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "cronjobs", name, "/cronjobs", "cronjobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -318,6 +336,9 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 
 	ss, err := s.manager.Client().AppsV1().StatefulSets(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "statefulsets", name, "/statefulsets", "statefulsets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -325,6 +346,9 @@ func (s *Server) handleStatefulSetScale(w http.ResponseWriter, r *http.Request) 
 	ss.Spec.Replicas = &r32
 	_, err = s.manager.Client().AppsV1().StatefulSets(s.manager.Namespace()).Update(r.Context(), ss, metav1.UpdateOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "update", "statefulsets", name, "/statefulsets", "statefulsets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -366,6 +390,9 @@ func (s *Server) handleStatefulSetRestart(w http.ResponseWriter, r *http.Request
 
 	_, err = s.manager.Client().AppsV1().StatefulSets(s.manager.Namespace()).Patch(r.Context(), name, types.MergePatchType, payload, metav1.PatchOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "patch", "statefulsets", name, "/statefulsets", "statefulsets") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -389,6 +416,9 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 
 	cj, err := s.manager.Client().BatchV1().CronJobs(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "cronjobs", name, "/cronjobs", "cronjobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -402,6 +432,9 @@ func (s *Server) handleCronJobSuspend(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.manager.Client().BatchV1().CronJobs(s.manager.Namespace()).Update(r.Context(), cj, metav1.UpdateOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "update", "cronjobs", name, "/cronjobs", "cronjobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -425,6 +458,9 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 
 	cj, err := s.manager.Client().BatchV1().CronJobs(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "cronjobs", name, "/cronjobs", "cronjobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -447,6 +483,9 @@ func (s *Server) handleCronJobTrigger(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.manager.Client().BatchV1().Jobs(s.manager.Namespace()).Create(r.Context(), job, metav1.CreateOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "create", "jobs", job.Name, "/cronjobs", "cronjobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -474,6 +513,9 @@ func (s *Server) handleJobDelete(w http.ResponseWriter, r *http.Request) {
 		PropagationPolicy: &propagationPolicy,
 	})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "delete", "jobs", name, "/jobs", "jobs") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

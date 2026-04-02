@@ -1,0 +1,85 @@
+{{template "layout.html" .}}
+
+{{define "title"}}Resources - k8s-ui{{end}}
+
+{{define "content"}}
+<div class="card" style="margin-bottom: 1rem;">
+    <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 1rem; align-items: center;">
+        <div>
+            <h2 class="card-title" style="margin-bottom: 0.25rem;">Resource Explorer</h2>
+            <div style="color: var(--text-secondary); font-size: 0.875rem;">Browse built-in resources and discovered custom resources in namespace {{.Namespace}}</div>
+        </div>
+        <input id="resource-search" type="text" placeholder="Search resources..." style="max-width: 280px;" />
+    </div>
+    <div style="padding: 1rem 1.5rem; color: var(--text-secondary); font-size: 0.85rem;">
+        Tip: custom resources link to their list views under <code>/crds/&lt;group&gt;/&lt;version&gt;/&lt;resource&gt;</code>.
+    </div>
+</div>
+
+{{if .DiscoveryWarning}}
+<div class="card" style="border-color: rgba(245, 158, 11, 0.4); margin-bottom: 1rem;">
+    <div style="padding: 0.875rem 1rem; color: var(--warning); background: rgba(245, 158, 11, 0.08);">
+        <strong>Custom Resource Notice:</strong> {{.DiscoveryWarning}}
+    </div>
+</div>
+{{end}}
+
+<div id="resource-groups" style="display: grid; gap: 1rem;">
+    {{range .Groups}}
+    <section class="card resource-group" data-group="{{.Name}}">
+        <div class="card-header">
+            <h3 class="card-title" style="font-size: 1rem;">{{.Name}}</h3>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem; padding: 1rem 1.5rem;">
+            {{range .Items}}
+            <a class="resource-item" href="{{.URL}}" data-search="{{.Search}} {{.Label}} {{.Subtitle}}" style="display: block; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; background: rgba(255,255,255,0.02);">
+                <div style="font-weight: 600; color: var(--text-primary);">{{.Label}}</div>
+                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.25rem;">{{.Subtitle}}</div>
+            </a>
+            {{end}}
+        </div>
+    </section>
+    {{end}}
+</div>
+
+<div id="resource-empty" class="card" style="display: none;">
+    <div style="padding: 1rem 1.5rem; color: var(--text-secondary);">No resources match your search.</div>
+</div>
+
+<script>
+(function() {
+    const input = document.getElementById('resource-search');
+    const groups = Array.from(document.querySelectorAll('.resource-group'));
+    const empty = document.getElementById('resource-empty');
+
+    function filter() {
+        const query = (input.value || '').trim().toLowerCase();
+        let visibleGroups = 0;
+
+        groups.forEach((group) => {
+            const items = Array.from(group.querySelectorAll('.resource-item'));
+            let visibleItems = 0;
+
+            items.forEach((item) => {
+                const searchable = (item.dataset.search || '').toLowerCase();
+                const show = query === '' || searchable.indexOf(query) !== -1;
+                item.style.display = show ? 'block' : 'none';
+                if (show) {
+                    visibleItems += 1;
+                }
+            });
+
+            const groupVisible = visibleItems > 0;
+            group.style.display = groupVisible ? 'block' : 'none';
+            if (groupVisible) {
+                visibleGroups += 1;
+            }
+        });
+
+        empty.style.display = visibleGroups === 0 ? 'block' : 'none';
+    }
+
+    input.addEventListener('input', filter);
+})();
+</script>
+{{end}}

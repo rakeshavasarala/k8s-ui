@@ -40,6 +40,9 @@ func (s *Server) handlePodsList(w http.ResponseWriter, r *http.Request) {
 
 	pods, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).List(r.Context(), metav1.ListOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "list", "pods", "", "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -88,6 +91,9 @@ func (s *Server) handlePodDetail(w http.ResponseWriter, r *http.Request) {
 
 	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -141,6 +147,9 @@ func (s *Server) handlePodRestart(w http.ResponseWriter, r *http.Request) {
 
 	err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Delete(r.Context(), name, metav1.DeleteOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "delete", "pods", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -164,6 +173,9 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	// Get pod to fetch container list
 	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -205,6 +217,9 @@ func (s *Server) handlePodLogs(w http.ResponseWriter, r *http.Request) {
 	req := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).GetLogs(name, opts)
 	stream, err := req.Stream(r.Context())
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods/log", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -272,6 +287,9 @@ func (s *Server) handlePodYAML(w http.ResponseWriter, r *http.Request) {
 
 	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -310,6 +328,9 @@ func (s *Server) handlePodLogsDownload(w http.ResponseWriter, r *http.Request) {
 	// Get pod to fetch container list
 	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -331,6 +352,9 @@ func (s *Server) handlePodLogsDownload(w http.ResponseWriter, r *http.Request) {
 	req := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).GetLogs(name, opts)
 	stream, err := req.Stream(r.Context())
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods/log", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -364,6 +388,9 @@ func (s *Server) handlePodExec(w http.ResponseWriter, r *http.Request) {
 	// Get pod to fetch container list
 	pod, err := s.manager.Client().CoreV1().Pods(s.manager.Namespace()).Get(r.Context(), name, metav1.GetOptions{})
 	if err != nil {
+		if s.handleK8sForbidden(w, err, "get", "pods", name, "/pods", "pods") {
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
